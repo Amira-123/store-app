@@ -1,0 +1,17 @@
+<div class="search pt-5 w-50">
+  <input
+    type="text"
+    class="form-control"
+    placeholder="search by title"
+    [formControl]="searchInput"
+  />
+</div>
+<div class="row pt-5">
+  <div class="col-lg-4" *ngFor="let product of filteredProducts">
+    <div class="products m-3">
+      <p>{{ product.title }}</p>
+      <p>{{ product.price }}</p>
+      <img [src]="product.image" class="rounded" alt="" />
+    </div>
+  </div>
+</div>
