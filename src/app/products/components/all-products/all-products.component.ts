@@ -1,8 +1,19 @@
 import { Component, OnInit } from '@angular/core';
 import { ProductService } from '../../service/product.service';
-import { Observable, debounceTime, filter, map, tap } from 'rxjs';
+import {
+  Observable,
+  concatMap,
+  debounceTime,
+  filter,
+  from,
+  map,
+  of,
+  switchMap,
+  tap,
+} from 'rxjs';
 import { Product } from '../../utilis/Product';
 import { FormBuilder, FormControl } from '@angular/forms';
+import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 
 @Component({
   selector: 'app-all-products',
@@ -12,43 +23,85 @@ import { FormBuilder, FormControl } from '@angular/forms';
 export class AllProductsComponent implements OnInit {
   constructor(
     private productService: ProductService,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private router: Router,
+    private route: ActivatedRoute
   ) {}
+
   searchInput: FormControl<string | null> = this.fb.control(null);
-  value: string | null = '';
-  // allProducts$: Observable<Product[]> = this.productService.getAllProducts();
-  allProducts$: Product[] = [];
+
   filteredProducts: Product[] = [];
+
+  // allProducts: Product[] = [];
+  // allProducts$: Observable<Product[]> = this.productService.getAllProducts()
+  //allProducts$: Product[] = [];
+
   ngOnInit(): void {
-    this.getAllProducts();
-    console.log(this.allProducts$);
+    // this.getAllProducts();
+    // console.log(this.allProducts$);
     this.searchInput.valueChanges
       .pipe(
-        debounceTime(1000),
-        tap((val) => {
-          this.value = val;
-          console.log(this.value);
-          this.search();
+        debounceTime(500),
+        switchMap((value: string | null) =>
+          from(
+            this.router.navigate([], {
+              queryParams: {
+                search: value || null,
+              },
+              queryParamsHandling: 'merge',
+            })
+          )
+        )
+      )
+      .subscribe();
+
+    this.onParamsChange();
+    console.log(this.filteredProducts);
+  }
+
+  private onParamsChange(): void {
+    this.route.queryParamMap
+      .pipe(
+        switchMap((params: ParamMap) => {
+          return this.productService.getAllProducts().pipe(
+            tap((prods: Product[]) => {
+              this.search(params.get('search'), prods);
+            })
+          );
         })
       )
       .subscribe();
   }
-  getAllProducts() {
-    this.productService.getAllProducts().subscribe({
-      next: (res) => {
-        this.allProducts$ = res;
-        this.filteredProducts = res;
-      },
-    });
-  }
-  search() {
-    let newArray = this.allProducts$.filter((el: any) =>
-      el.title.toLowerCase().includes(this.value?.toLowerCase())
+
+  // getAllProducts() {
+  //   this.productService.getAllProducts().subscribe({
+  //     next: (res) => {
+  //       this.allProducts = res;
+  //       this.filteredProducts = res;
+  //     },
+  //   });
+  // }
+
+  search(searchValue: string | null, allProducts: Product[]): void {
+    this.searchInput.patchValue(searchValue);
+
+    const newArray = allProducts.filter((prod: Product) =>
+      (prod.title as string)
+        .toLowerCase()
+        .includes((searchValue as string)?.toLowerCase())
     );
-    if (this.value) {
+
+    if (searchValue) {
       this.filteredProducts = newArray;
+      console.log(this.filteredProducts);
     } else {
-      this.filteredProducts = this.allProducts$;
+      this.filteredProducts = allProducts;
+      console.log(this.filteredProducts);
     }
+  }
+
+  clearInput() {
+    // this.router.navigate([]);
+    this.searchInput.patchValue(null);
   }
 }
